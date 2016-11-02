@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<!--Default XML file-->
+<nocblock>
+  <name>wavegen</name>
+  <blockname>wavegen</blockname>
+  <ids>
+    <id revision="0">DFA0000000000000</id>
+  </ids>
+  <!--One input, one output. If this is used, better have all the info the C++ file.-->
+  <ports>
+    <sink>
+      <name>dump</name>
+    </sink>
+    <source>
+      <name>src</name>
+      <type>sc16</type>
+    </source>
+  </ports>
+</nocblock>

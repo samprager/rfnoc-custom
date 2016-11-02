@@ -1,0 +1,3 @@
+$(addprefix /home/sprager/Projects/rfnoc-custom/src/rfnoc-wavegen/rfnoc/fpga-src/, \
+noc_block_wavegen.v \
+)
