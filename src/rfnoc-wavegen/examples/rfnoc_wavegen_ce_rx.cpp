@@ -234,7 +234,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
         ("wavegenid", po::value<std::string>(&wavegenid)->default_value("wavegen"), "The block ID for the null source.")
         ("blockid", po::value<std::string>(&blockid)->default_value("FIFO"), "The block ID for the processing block.")
         ("blockid2", po::value<std::string>(&blockid2)->default_value("DmaFIFO"), "Optional: The block ID for the 2nd processing block.")
-        ("blockid3", po::value<std::string>(&blockid3)->default_value("FIFO"), "Optional: The block ID for the 3rd processing block.")
+        ("blockid3", po::value<std::string>(&blockid3)->default_value("FIFO_1"), "Optional: The block ID for the 3rd processing block.")
     ;
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
