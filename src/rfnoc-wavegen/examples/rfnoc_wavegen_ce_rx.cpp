@@ -92,7 +92,7 @@ template<typename samp_type> void recv_to_file(
 
         if (md.error_code == uhd::rx_metadata_t::ERROR_CODE_TIMEOUT) {
             std::cout << boost::format("Timeout while streaming") << std::endl;
-            break;
+            //break;
         }
         if (md.error_code == uhd::rx_metadata_t::ERROR_CODE_OVERFLOW){
             if (overflow_message){
@@ -225,7 +225,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
         ("spb", po::value<size_t>(&spb)->default_value(10000), "samples per buffer")
         ("spp", po::value<size_t>(&spp)->default_value(64), "samples per packet (on FPGA and wire)")
         ("block_rate", po::value<double>(&block_rate)->default_value(200e6), "The clock rate of the processing block.")
-        ("rate", po::value<double>(&rate)->default_value(1e6), "rate at which samples are produced in the null source")
+        ("rate", po::value<double>(&rate)->default_value(200e6), "rate at which samples are produced in the source")
         ("setup", po::value<double>(&setup_time)->default_value(1.0), "seconds of setup time")
         ("format", po::value<std::string>(&format)->default_value("sc16"), "File sample type: sc16, fc32, or fc64")
         ("progress", "periodically display short-term bandwidth")
@@ -371,6 +371,8 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
     //        )
     //     << std::endl;
 
+    wavegen_ctrl->set_rate(rate);
+
     std::cout << "Setting AWG Policy..."<<std::endl;
     wavegen_ctrl->set_policy_manual();
     std::string policy_str = wavegen_ctrl->get_policy();
@@ -381,10 +383,12 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
     std::string src_str = wavegen_ctrl->get_src();
     std::cout << "AWG Src Ctrl set to: "<<src_str<<std::endl;
 
-    int num_awg_samples = 512;
+    int num_awg_samples = 128;
     std::vector<boost::uint32_t> samples;
     for (int i=0;i<num_awg_samples;i++) {
-        samples.push_back(boost::uint32_t(i));
+        // samples.push_back(boost::uint32_t(i));
+        //samples.push_back(boost::uint32_t(0xFEEDBEEF));
+        samples.push_back(boost::uint32_t(0xFEED000 + boost::uint16_t(i)));
     }
     wavegen_ctrl->set_waveform(samples);
 
@@ -397,17 +401,28 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
         return ~0;
     }
 
-    boost::uint32_t total_rx_samples = 1024;
+    boost::uint32_t total_rx_samples = 528;
     wavegen_ctrl->set_rx_len(total_rx_samples);
 
     std::cout << "Checking Total RX sample Length"<<std::endl;
     boost::uint32_t total_rx_len = wavegen_ctrl->get_rx_len();
-    std::cout << "Uploaded Waveform Length set to: "<<total_rx_len<<std::endl;
+    std::cout << "Total RX Length set to: "<<total_rx_len<<std::endl;
 
     if(total_rx_len != total_rx_samples){
         std::cout<<"Error: read rx sample len: "<<total_rx_len<<" Expected: "<<total_rx_samples<<std::endl;
         return ~0;
     }
+
+    std::cout << "Setting AWG PRF..."<<std::endl;
+    //wavegen_ctrl->set_policy_manual();
+    boost::uint64_t prf_count = rate;
+    wavegen_ctrl->set_prf_count(prf_count);
+    boost::uint64_t prf_read = wavegen_ctrl->get_prf_count();
+    std::cout << "AWG PRF set to: "<<prf_read<<"("<< prf_read/rate <<" sec)"<<std::endl;
+
+    std::cout << "Setting AWG Policy to Auto..."<<std::endl;
+    wavegen_ctrl->set_policy_auto();
+    std::cout << "AWG Policy set to: "<<wavegen_ctrl->get_policy()<<std::endl;
 
     /////////////////////////////////////////////////////////////////////////
     //////// 5. Connect blocks //////////////////////////////////////////////
@@ -448,7 +463,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
     /////////////////////////////////////////////////////////////////////////
     //////// 6. Initiate Waveform Pulse //////////////////////////////////////////////
     /////////////////////////////////////////////////////////////////////////
-    wavegen_ctrl->send_pulse();
+    //wavegen_ctrl->send_pulse();
 
 #define recv_to_file_args() \
         (rx_stream, file, spb, total_num_samps, total_time, bw_summary, stats, continue_on_bad_packet)

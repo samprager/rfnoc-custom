@@ -22,10 +22,15 @@
 #include <uhd/rfnoc/wavegen_block_ctrl.hpp>
 #include <uhd/convert.hpp>
 #include <uhd/utils/msg.hpp>
+#include <uhd/types/ranges.hpp>
+#include <uhd/types/direction.hpp>
+#include <uhd/types/stream_cmd.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/bind.hpp>
 #include "time_core_3000.hpp"
 #include <math.h>
 
+using namespace uhd;
 using namespace uhd::rfnoc;
 
 
@@ -127,12 +132,50 @@ public:
         /* Each waveform upload must have unique ID */
         wfrm_header.id ++;
     }
+    void issue_stream_cmd(const uhd::stream_cmd_t &stream_cmd, const size_t)
+    {
+        UHD_RFNOC_BLOCK_TRACE() << "wavegen_block_ctrl::issue_stream_cmd() " << char(stream_cmd.stream_mode) << std::endl;
+
+        //setup the mode to instruction flags
+        typedef boost::tuple<bool, bool, bool, bool> inst_t;
+        static const uhd::dict<stream_cmd_t::stream_mode_t, inst_t> mode_to_inst = boost::assign::map_list_of
+                                                                //reload, chain, samps, stop
+            (stream_cmd_t::STREAM_MODE_START_CONTINUOUS,   inst_t(true,  true,  false, false))
+            (stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS,    inst_t(false, false, false, true))
+            (stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE, inst_t(false, false, true,  false))
+            (stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_MORE, inst_t(false, true,  true,  false))
+        ;
+
+        //setup the instruction flag values
+        bool inst_reload, inst_chain, inst_samps, inst_stop;
+        boost::tie(inst_reload, inst_chain, inst_samps, inst_stop) = mode_to_inst[stream_cmd.stream_mode];
+
+        //calculate the word from flags and length
+        boost::uint32_t cmd_word = 0;
+        cmd_word |= boost::uint32_t((stream_cmd.stream_now)? 1 : 0) << 31;
+        cmd_word |= boost::uint32_t((inst_chain)?            1 : 0) << 30;
+        cmd_word |= boost::uint32_t((inst_reload)?           1 : 0) << 29;
+        cmd_word |= boost::uint32_t((inst_stop)?             1 : 0) << 28;
+        cmd_word |= (inst_samps)? stream_cmd.num_samps : ((inst_stop)? 0 : 1);
+
+        //issue the stream command
+        const boost::uint64_t ticks = (stream_cmd.stream_now)? 0 : stream_cmd.time_spec.to_ticks(get_rate());
+        sr_write(SR_RADAR_CTRL_COMMAND, cmd_word);
+        sr_write(SR_RADAR_CTRL_TIME_HI, boost::uint32_t(ticks >> 32));
+        sr_write(SR_RADAR_CTRL_TIME_LO, boost::uint32_t(ticks >> 0)); //latches the command
+
+        send_pulse();
+    }
+
+    void set_rate(double rate){
+      _tick_rate = rate;
+    }
 
     void send_pulse(){
         UHD_RFNOC_BLOCK_TRACE() << "wavegen_block::send_pulse()" << std::endl;
         boost::uint32_t pulse_cmd_imm = 0x80000000;
         /* Start immediately */
-        sr_write(SR_RADAR_CTRL_COMMAND, pulse_cmd_imm);
+        sr_write(SR_RADAR_CTRL_TIME_HI, pulse_cmd_imm);
         /* Write TIME_LO register to initiate */
         sr_write(SR_RADAR_CTRL_TIME_LO, 0);
     }
@@ -284,7 +327,8 @@ public:
         UHD_RFNOC_BLOCK_TRACE() << "wavegen_block::get_policy_word()" << std::endl;
         boost::uint32_t policy = boost::uint32_t(user_reg_read64(RB_AWG_POLICY));
         UHD_MSG(status) << "wavegen_block::get_policy_word() policy ==" << policy << std::endl;
-        UHD_ASSERT_THROW(policy);
+        //UHD_ASSERT_THROW(policy);
+        UHD_ASSERT_THROW(1);
         return policy;
     }
     std::string get_policy()
@@ -292,13 +336,15 @@ public:
         UHD_RFNOC_BLOCK_TRACE() << "wavegen_block::get_policy()" << std::endl;
         boost::uint32_t policy = boost::uint32_t(user_reg_read64(RB_AWG_POLICY));
         UHD_MSG(status) << "wavegen_block::get_policy() policy ==" << policy << std::endl;
-        UHD_ASSERT_THROW(policy);
+        //UHD_ASSERT_THROW(policy);
         std::string policy_str;
         if (policy == RADAR_POLICY_AUTO) {
             policy_str = "AUTO";
+            UHD_ASSERT_THROW(1);
         }
         else if (policy == RADAR_POLICY_MANUAL) {
             policy_str = "MANUAL";
+            UHD_ASSERT_THROW(1);
         }
         else {
             policy_str = "UNKNOWN:" + boost::lexical_cast<std::string>(policy) + " DEFAULT MANUAL";
@@ -351,8 +397,13 @@ public:
         return awg_state;
     }
 
+    double get_rate(){
+      return _tick_rate;
+    }
+
 private:
     const std::string _item_type;
+    double _tick_rate;
     struct waveform_header {
         boost::uint16_t len;
         boost::uint16_t ind;
