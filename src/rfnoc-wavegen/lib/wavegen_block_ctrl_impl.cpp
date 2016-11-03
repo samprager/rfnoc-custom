@@ -19,7 +19,7 @@
  */
 
 
-#include <wavegen/wavegen_block_ctrl.hpp>
+#include <uhd/rfnoc/wavegen_block_ctrl.hpp>
 #include <uhd/convert.hpp>
 #include <uhd/utils/msg.hpp>
 #include <boost/lexical_cast.hpp>

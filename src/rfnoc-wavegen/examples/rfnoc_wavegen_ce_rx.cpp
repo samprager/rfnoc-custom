@@ -34,7 +34,7 @@
 #include <csignal>
 #include <complex>
 
-#include "../include/wavegen_block_ctrl.hpp"
+#include <uhd/rfnoc/wavegen_block_ctrl.hpp>
 
 namespace po = boost::program_options;
 
@@ -382,14 +382,14 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
     std::cout << "AWG Src Ctrl set to: "<<src_str<<std::endl;
 
     int num_awg_samples = 512;
-    std::vector<boost:uint32_t> samples;
+    std::vector<boost::uint32_t> samples;
     for (int i=0;i<num_awg_samples;i++) {
-        samples.push_back(boost:uint32_t(i));
+        samples.push_back(boost::uint32_t(i));
     }
     wavegen_ctrl->set_waveform(samples);
 
     std::cout << "Checking Uploaded Waveform Length"<<std::endl;
-    boost:uint32_t wfrm_len = wavegen_ctrl->get_waveform_len();
+    boost::uint32_t wfrm_len = wavegen_ctrl->get_waveform_len();
     std::cout << "Uploaded Waveform Length set to: "<<wfrm_len<<std::endl;
 
     if(wfrm_len != num_awg_samples){
@@ -401,7 +401,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
     wavegen_ctrl->set_rx_len(total_rx_samples);
 
     std::cout << "Checking Total RX sample Length"<<std::endl;
-    boost:uint32_t total_rx_len = wavegen_ctrl->get_rx_len();
+    boost::uint32_t total_rx_len = wavegen_ctrl->get_rx_len();
     std::cout << "Uploaded Waveform Length set to: "<<total_rx_len<<std::endl;
 
     if(total_rx_len != total_rx_samples){
