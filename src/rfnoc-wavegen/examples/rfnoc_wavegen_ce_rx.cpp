@@ -34,7 +34,7 @@
 #include <csignal>
 #include <complex>
 
-#include "wavegen_block_ctrl.hpp"
+#include "../include/wavegen_block_ctrl.hpp"
 
 namespace po = boost::program_options;
 
